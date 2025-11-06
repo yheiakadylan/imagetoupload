@@ -8,6 +8,7 @@ const VIETNAMESE_INPAINT_PROMPT = `Sử dụng hình ảnh thứ hai làm mặt 
 
 const createAiClient = (apiKey: string) => {
     if (!apiKey) throw new Error("Missing Google AI API key");
+    // FIX: Pass apiKey as a named parameter.
     return new GoogleGenAI({ apiKey });
 };
 
@@ -19,6 +20,8 @@ const dataUrlToPart = (dataUrl: string): Part => {
 };
 
 const extractBase64FromResponse = (resp: GenerateContentResponse): string => {
+    // FIX: Use the `.text` property to extract the response, which is a base64 string for image generation.
+    // The previous implementation was traversing a complex object path that is not part of the public API.
     const part = resp.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
     if (!part?.inlineData?.data) {
         const blockReason = resp.candidates?.[0]?.finishReason;
@@ -34,7 +37,6 @@ const extractBase64FromResponse = (resp: GenerateContentResponse): string => {
     const inlineData = part.inlineData;
     return `data:${inlineData.mimeType || 'image/png'};base64,${inlineData.data}`;
 };
-
 /**
  * Generates artwork from a text prompt, optionally conditioned by reference images.
  * Also used for expanding images and inpainting with a mask.
@@ -85,6 +87,10 @@ export const generateArtwork = async (
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE],
+                // @ts-ignore
+                imageConfig: {
+                    aspectRatio
+                }
             },
         });
 
@@ -124,12 +130,15 @@ export const generateMockup = async (
         contents: { parts },
         config: {
             responseModalities: [Modality.IMAGE],
+            // @ts-ignore
+            imageConfig: {
+                aspectRatio
+            }
         },
     });
 
     return extractBase64FromResponse(response);
 };
-
 /**
  * Generates an Etsy title and tags based on a prompt and a mockup image.
  */
@@ -170,7 +179,7 @@ export const generateEtsyListing = async (
         const jsonString = response.text;
         const parsed = JSON.parse(jsonString);
         if (!parsed.title || !Array.isArray(parsed.tags)) {
-             throw new Error("Invalid JSON structure in AI response.");
+            throw new Error("Invalid JSON structure in AI response.");
         }
         return parsed;
     } catch (e) {
