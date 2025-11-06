@@ -3,8 +3,8 @@ import { db, auth, firebaseConfig } from '../services/firebase';
 import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 // FIX: Added getAuth to the import from firebase/auth
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User as FirebaseUser, getAuth } from 'firebase/auth';
-// FIX: Use namespaced import for firebase/app to fix module resolution errors.
-import * as firebaseApp from 'firebase/app';
+// FIX: Use named imports for Firebase v9+ modular functions instead of a namespace import.
+import { initializeApp, deleteApp } from 'firebase/app';
 
 export interface User {
     id: string;
@@ -12,6 +12,7 @@ export interface User {
     role: 'admin' | 'user' | 'manager';
     apiKeyId?: string;
     password?: string; // Only used for creation/validation, not stored in active session
+    etsy_access_token?: string;
 }
 
 interface AuthContextType {
@@ -71,6 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         username: userData?.username,
                         role: userData?.role,
                         apiKeyId: userData?.apiKeyId,
+                        etsy_access_token: userData?.etsy_access_token,
                     });
                 } else {
                     await signOut(auth);
@@ -135,8 +137,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         const tempAppName = `temp-user-creation-${Date.now()}`;
-        // FIX: Call initializeApp directly using named import.
-        const tempApp = firebaseApp.initializeApp(firebaseConfig, tempAppName);
+        // FIX: `initializeApp` must be called directly as a named import, not as a method on a namespace.
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
         const tempAuth = getAuth(tempApp);
 
         try {
@@ -152,8 +154,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 throw new Error("Failed to create user account.");
             }
         } finally {
-            // FIX: Call deleteApp directly using named import.
-            await firebaseApp.deleteApp(tempApp);
+            // FIX: `deleteApp` must be called directly as a named import, not as a method on a namespace.
+            await deleteApp(tempApp);
         }
     }, [loadAllUsers]);
 

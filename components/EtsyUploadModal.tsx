@@ -159,45 +159,27 @@ const EtsyUploadModal: React.FC<EtsyUploadModalProps> = ({
             showStatus('Vui lòng nhập Listing ID mẫu.', 'warn');
             return;
         }
+        if (!user) {
+            showStatus('User not found. Please log in again.', 'err');
+            return;
+        }
         
         setIsFetching(true);
         showStatus('Đang lấy dữ liệu từ Etsy...', 'info');
 
         try {
-            // *** TODO: YÊU CẦU BACKEND ***
-            // Gọi Vercel Function /api/fetchEtsyListing
-            // const response = await fetch(`/api/fetchEtsyListing?id=${listingIdToFetch}`);
-            // const data = await response.json();
-            // if (!response.ok) throw new Error(data.error || 'Lỗi từ Vercel Function');
-            // const { listingData, inventoryData } = data;
+            const response = await fetch(`/api/fetchEtsyListing?id=${listingIdToFetch}&userId=${user.id}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Lỗi từ Vercel Function');
+            const { listingData, inventoryData } = data;
             
-            // --- DỮ LIỆU GIẢ ĐỊNH (PHẢI THAY BẰNG GỌI BACKEND THẬT) ---
-            await new Promise(res => setTimeout(res, 1000)); // Giả lập chờ
-            const listingData = {
-                title: "Fetched T-Shirt",
-                description: "This is a fetched description.\n100% Cotton.",
-                taxonomy_id: 123456,
-                shipping_profile_id: 987654321,
-                return_policy_id: 123456789,
-                who_made: "someone_else",
-                when_made: "2020_2024",
-            };
-            const inventoryData = {
-                "products": [
-                    {"sku": "SKU-S", "offerings": [{"price": 25.00, "quantity": 999}], "property_values": "[...]"},
-                    {"sku": "SKU-M", "offerings": [{"price": 25.00, "quantity": 999}], "property_values": "[...]"}
-                ],
-                "pricing_on_property": 503
-            };
-            // --- Hết Dữ liệu giả định ---
-
-            setTemplateName(listingData.title + " (Copy)");
-            setTemplateDescription(listingData.description);
-            setTemplateTaxonomyId(String(listingData.taxonomy_id));
-            setTemplateShippingId(String(listingData.shipping_profile_id));
-            setTemplateReturnId(String(listingData.return_policy_id));
-            setTemplateWhoMade(listingData.who_made);
-            setTemplateWhenMade(listingData.when_made);
+            setTemplateName((listingData.title || "Fetched Listing") + " (Copy)");
+            setTemplateDescription(listingData.description || "");
+            setTemplateTaxonomyId(String(listingData.taxonomy_id || ""));
+            setTemplateShippingId(String(listingData.shipping_profile_id || ""));
+            setTemplateReturnId(String(listingData.return_policy_id || ""));
+            setTemplateWhoMade(listingData.who_made || 'i_did');
+            setTemplateWhenMade(listingData.when_made || 'made_to_order');
             setTemplateReadinessId(''); // Not a standard fetched field
             setTemplateInventory(JSON.stringify(inventoryData, null, 2));
             setSelectedDescTemplateId('');
@@ -273,15 +255,20 @@ const EtsyUploadModal: React.FC<EtsyUploadModalProps> = ({
         if (!templateShippingId || !templateTaxonomyId || !templateWhoMade || !templateWhenMade) {
             showStatus('Khuôn mẫu thiếu Taxonomy ID, Shipping ID, Who Made hoặc When Made.', 'warn'); return;
         }
+        if (!user) {
+            showStatus('User not found. Please log in again.', 'err');
+            return;
+        }
 
         setIsUploading(true);
-        showStatus('Đang upload lên Etsy... (Giả lập)', 'info');
+        showStatus('Đang upload lên Etsy...', 'info');
 
         try {
             const activeTemplate = etsyTemplates.find(t => t.id === selectedTemplateId);
             if (!activeTemplate) throw new Error("Không tìm thấy khuôn mẫu đã chọn.");
 
             const finalPayload = {
+                userId: user.id,
                 listing: {
                     title: generatedTitle,
                     description: templateDescription,
@@ -292,33 +279,25 @@ const EtsyUploadModal: React.FC<EtsyUploadModalProps> = ({
                     who_made: templateWhoMade,
                     when_made: templateWhenMade,
                     readiness_state_id: templateReadinessId,
-                    state: 'active' // Hoặc 'draft'
+                    state: 'draft' // Create as draft first
                 },
                 inventory: JSON.parse(templateInventory),
                 imageDataUrls: mockups.map(m => m.dataUrl)
             };
             
-            // *** TODO: YÊU CẦU BACKEND ***
-            // Gọi Vercel Function /api/uploadEtsyListing
-            // const response = await fetch(`/api/uploadEtsyListing`, {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(finalPayload)
-            // });
-            // const result = await response.json();
-            // if (!response.ok) throw new Error(result.error);
+            const response = await fetch(`/api/uploadEtsyListing`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalPayload)
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error);
             
-            // --- DỮ LIỆU GIẢ LẬP (PHẢI THAY BẰNG GỌI BACKEND THẬT) ---
-            await new Promise(res => setTimeout(res, 2000));
-            const new_listing_id = Math.floor(Math.random() * 1000000);
-            // const result = { new_listing_id: new_listing_id };
-            // --- Hết Giả lập ---
-            
-            showStatus(`Tạo listing ${new_listing_id} thành công!`, 'ok');
+            showStatus(`Tạo listing brouillon ${result.new_listing_id} thành công!`, 'ok');
             onClose(); // Tự động đóng popup khi thành công
 
         } catch (error: any) {
-            showStatus(`Upload thất bại: ${error.message}`, 'err');
+            showStatus(`Upload thất bại: ${error.message}`, 'err', 5000);
         } finally {
             setIsUploading(false);
         }

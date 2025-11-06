@@ -1,5 +1,5 @@
-// FIX: Use namespaced import for firebase/app to fix module resolution errors.
-import * as firebaseApp from 'firebase/app';
+// FIX: Use named imports for Firebase v9+ modular functions instead of a namespace import.
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -14,8 +14,8 @@ export const firebaseConfig = {
 };
 
 // Initialize Firebase
-// FIX: Call Firebase app functions directly using named imports.
-const app = !firebaseApp.getApps().length ? firebaseApp.initializeApp(firebaseConfig) : firebaseApp.getApp();
+// FIX: Call Firebase app functions directly as named imports, not as methods on a namespace.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
