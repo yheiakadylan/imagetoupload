@@ -13,7 +13,7 @@ export interface ApiKey {
 }
 
 export interface ArtRef {
-    id: string;
+    id:string;
     name: string;
     dataUrl: string;
     publicId?: string;
@@ -28,6 +28,14 @@ export interface Sample {
     createdAt: number;
 }
 
+export interface Template {
+    id: string;
+    name: string;
+    prompt: string;
+    createdAt: number;
+}
+
+// FIX: Added missing CutTemplate interface for die-cut templates.
 export interface CutTemplate {
     id: string;
     name: string;
@@ -35,13 +43,6 @@ export interface CutTemplate {
     svgText?: string;
     pngMask?: string;
     pngMaskPublicId?: string;
-}
-
-export interface Template {
-    id: string;
-    name: string;
-    prompt: string;
-    createdAt: number;
 }
 
 export interface MockupPrompt {

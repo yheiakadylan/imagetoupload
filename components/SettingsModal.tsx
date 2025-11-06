@@ -4,9 +4,8 @@ import UserManagementPanel from './UserManagementPanel';
 import ApiKeyPanel from './settings/ApiKeyPanel';
 import PromptTemplatePanel from './settings/PromptTemplatePanel';
 import ImageTemplatePanel from './settings/ImageTemplatePanel';
-import CutTemplatePanel from './settings/CutTemplatePanel';
 import AnnouncementPanel from './settings/AnnouncementPanel';
-import { ArtRef, CutTemplate, Sample, Template } from '../types';
+import { ArtRef, Sample, Template } from '../types';
 import { AuthContext } from '../contexts/AuthContext';
 
 interface SettingsModalProps {
@@ -14,7 +13,7 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-type Tab = 'api' | 'prompts' | 'samples' | 'refs' | 'cuts' | 'users' | 'announcement';
+type Tab = 'api' | 'prompts' | 'samples' | 'refs' | 'users' | 'announcement';
 
 const ALL_TABS: { id: Tab, label: string, adminOnly: boolean, managerOrAdmin: boolean }[] = [
     { id: 'announcement', label: 'Announcement', adminOnly: true, managerOrAdmin: false },
@@ -23,7 +22,6 @@ const ALL_TABS: { id: Tab, label: string, adminOnly: boolean, managerOrAdmin: bo
     { id: 'prompts', label: 'Mockup Prompts', adminOnly: false, managerOrAdmin: true },
     { id: 'samples', label: 'Product Samples', adminOnly: false, managerOrAdmin: true },
     { id: 'refs', label: 'Art References', adminOnly: false, managerOrAdmin: true },
-    { id: 'cuts', label: 'Cut Templates', adminOnly: false, managerOrAdmin: true },
 ];
 
 const ChevronDownIcon = () => (
@@ -62,7 +60,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             case 'prompts': return <PromptTemplatePanel />;
             case 'samples': return <ImageTemplatePanel<Sample> storageKey="SAMPLE_TEMPLATES" title="Product Samples" />;
             case 'refs': return <ImageTemplatePanel<ArtRef> storageKey="ARTREF_TEMPLATES" title="Artwork References" />;
-            case 'cuts': return <CutTemplatePanel />;
             default: return null;
         }
     }

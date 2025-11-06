@@ -30,13 +30,16 @@ interface MockupColumnProps {
     onAddToQueue: (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string) => void;
     jobQueue: Job[];
     onOpenQueueManager: () => void;
+    onSelectForEtsy: (result: LogEntry) => void;
+    selectedForEtsyId?: string;
 }
 
 const MockupColumn: React.FC<MockupColumnProps> = ({
     isLoading, progress, results, onGenerate, onCancel, onViewImage,
     isUpscaled, onUpscaleChange, onSaveAllExpanded, user,
     isJpegCompress, onJpegCompressChange, jpegQuality, onJpegQualityChange,
-    isBatchMode, onBatchModeChange, onAddToQueue, jobQueue, onOpenQueueManager
+    isBatchMode, onBatchModeChange, onAddToQueue, jobQueue, onOpenQueueManager,
+    onSelectForEtsy, selectedForEtsyId
 }) => {
     const [prompts, setPrompts] = useState('');
     const [count, setCount] = useState(1);
@@ -229,8 +232,8 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
                         <div 
                             key={result.id} 
                             id={`log-item-${result.id}`}
-                            className="snap-center flex-shrink-0 w-[70%] sm:w-[45%] md:w-auto aspect-square rounded-xl bg-[repeating-conic-gradient(#1a1a2e_0%_25%,#2a2a44_0%_50%)] bg-[0_0/20px_20px] border border-white/20 flex items-center justify-center p-1 group relative cursor-zoom-in"
-                            onClick={(e) => onViewImage(result, e.currentTarget)}
+                            className={`snap-center flex-shrink-0 w-[70%] sm:w-[45%] md:w-auto aspect-square rounded-xl bg-[repeating-conic-gradient(#1a1a2e_0%_25%,#2a2a44_0%_50%)] bg-[0_0/20px_20px] border border-white/20 flex items-center justify-center p-1 group relative cursor-pointer transition-all duration-200 ${selectedForEtsyId === result.id ? 'ring-4 ring-purple-500' : ''}`}
+                            onClick={() => onSelectForEtsy(result)}
                         >
                             {result.error ? (
                                 <p className="text-red-400 text-xs text-center p-2">{result.error}</p>
@@ -242,8 +245,18 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
                                         className="max-w-full max-h-full object-contain rounded-lg pointer-events-none"
                                     />
                                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg pointer-events-none">
-                                        <p className="font-bold">View Details</p>
+                                        <p className="font-bold">Select</p>
                                     </div>
+                                     <Button 
+                                        variant="ghost" 
+                                        className="!absolute !bottom-2 !left-2 !text-xs !py-1 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            onViewImage(result, e.currentTarget.parentElement!); 
+                                        }}
+                                    >
+                                        View
+                                    </Button>
                                 </>
                             )}
                         </div>

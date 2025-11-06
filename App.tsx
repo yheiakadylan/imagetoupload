@@ -1,11 +1,8 @@
-
-
-
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { ExpandedNode, User, LogEntry, MockupPrompt, ArtRef, Sample, CutTemplate, Status, Job } from './types';
+import { ExpandedNode, User, LogEntry, MockupPrompt, ArtRef, Sample, Status, Job } from './types';
 import ArtColumn from './components/ArtColumn';
-import CutColumn from './components/CutColumn';
 import MockupColumn from './components/MockupColumn';
+import EtsyColumn from './components/EtsyColumn';
 import Header from './components/Header';
 import StatusToast from './components/StatusToast';
 import ImageViewer from './components/ImageViewer';
@@ -32,8 +29,14 @@ const App: React.FC = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [artRefs, setArtRefs] = useState<ArtRef[]>([]);
     const [samples, setSamples] = useState<Sample[]>([]);
-    const [cutTemplate, setCutTemplate] = useState<CutTemplate | null>(null);
     const [currentMockups, setCurrentMockups] = useState<LogEntry[]>([]);
+    const [selectedMockupForEtsy, setSelectedMockupForEtsy] = useState<LogEntry | null>(null);
+
+    // State for Etsy Column, lifted up for automation
+    const [generatedTitle, setGeneratedTitle] = useState('');
+    const [generatedTags, setGeneratedTags] = useState<string[]>([]);
+    const [isEtsyLoading, setIsEtsyLoading] = useState(false);
+
 
     const auth = useContext(AuthContext);
     const { log: generationLog, addResultToLog, deleteResultsFromLog } = useImageLog(auth.user);
@@ -65,7 +68,7 @@ const App: React.FC = () => {
 
     const userApiKey = apiKeys.find(k => k.id === auth.user?.apiKeyId)?.key;
 
-    const [activeTab, setActiveTab] = useState<'art' | 'cut' | 'mockup'>('art');
+    const [activeTab, setActiveTab] = useState<'art' | 'mockup' | 'etsy'>('art');
 
     const getDownloadOptions = (): ProcessImageOptions => ({
         isUpscaled,
@@ -139,7 +142,38 @@ const App: React.FC = () => {
         setArtwork(b64);
         setPreviews([]);
         setCurrentIndex(0);
+        setSelectedMockupForEtsy(null);
+        setGeneratedTitle('');
+        setGeneratedTags([]);
         showStatus('Artwork applied!', 'ok');
+    };
+
+    const handleGenerateEtsyContent = async (mockupToUse: LogEntry | null) => {
+        if (!mockupToUse?.dataUrl || !mockupToUse.prompt) {
+            showStatus('An eligible mockup with a prompt is required.', 'warn');
+            return;
+        }
+        if (!userApiKey) {
+            showStatus('Your account does not have an API key assigned.', 'err');
+            return;
+        }
+
+        const fullPrompt = `${mockupToUse.prompt}; help me write a title in a way that follows Etsy’s updated title guidance (clear nouns, objective descriptors, no subjective/gifting words, no repeats) and 13 SEO tags (each under 20 characters, separated by commas).`;
+
+        setIsEtsyLoading(true);
+        setGeneratedTitle('');
+        setGeneratedTags([]);
+        try {
+            const result = await geminiService.generateEtsyListing(fullPrompt, mockupToUse.dataUrl, userApiKey);
+            setGeneratedTitle(result.title);
+            setGeneratedTags(result.tags);
+            showStatus('Title and tags generated!', 'ok');
+        } catch (error: any) {
+            console.error('Etsy generation failed:', error);
+            showStatus(error.message || 'Failed to generate title and tags.', 'err');
+        } finally {
+            setIsEtsyLoading(false);
+        }
     };
 
     const handleGenerateMockups = async (prompts: MockupPrompt[], count: number, aspectRatio: string) => {
@@ -153,6 +187,9 @@ const App: React.FC = () => {
         }
     
         setCurrentMockups([]);
+        setSelectedMockupForEtsy(null);
+        setGeneratedTitle('');
+        setGeneratedTags([]);
         setIsLoading(true);
         const totalJobs = prompts.length * count;
         setProgress({ done: 0, total: totalJobs, label: 'Generating mockups...' });
@@ -165,6 +202,7 @@ const App: React.FC = () => {
             const downscaledSamples = await Promise.all(samples.map(s => downscaleDataUrl(s.dataUrl)));
     
             let jobsCompleted = 0;
+            let firstMockupGenerated = false;
             for (const prompt of prompts) {
                 for (let i = 0; i < count; i++) {
                     if (signal.aborted) {
@@ -179,6 +217,13 @@ const App: React.FC = () => {
                         const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: resultUrl, createdAt: Date.now() };
                         await addResultToLog(newEntry);
                         setCurrentMockups(prev => [newEntry, ...prev]);
+
+                        if (!firstMockupGenerated) {
+                            setSelectedMockupForEtsy(newEntry);
+                            handleGenerateEtsyContent(newEntry); // Fire-and-forget
+                            firstMockupGenerated = true;
+                        }
+
                     } catch (error: any) {
                         if (signal.aborted) throw new Error("Operation cancelled by user.");
                         const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: error.message || 'Generation failed', createdAt: Date.now() };
@@ -445,7 +490,7 @@ const App: React.FC = () => {
                 jpegQuality={jpegQuality}
             />
             
-            <main className="flex-1 md:grid md:grid-cols-3 md:grid-rows-1 gap-3 p-3 min-h-0 pb-16 md:pb-3">
+            <main className="flex-1 md:grid md:grid-cols-[1fr_1.2fr_1fr] md:grid-rows-1 gap-3 p-3 min-h-0 pb-16 md:pb-3">
                 <div className={`md:block h-full ${activeTab === 'art' ? 'block' : 'hidden'}`}>
                     <ArtColumn
                         artwork={artwork}
@@ -464,14 +509,6 @@ const App: React.FC = () => {
                         onViewImage={(imageUrl, sourceId, sourceEl) => setViewerData({ imageUrl, sourceId, sourceEl })}
                         sparkleRef={sparkleRef}
                         isUpscaled={isUpscaled}
-                    />
-                </div>
-                 <div className={`md:block h-full ${activeTab === 'cut' ? 'block' : 'hidden'}`}>
-                    <CutColumn
-                        artwork={artwork}
-                        template={cutTemplate}
-                        onTemplateChange={setCutTemplate}
-                        user={auth.user as User}
                     />
                 </div>
                  <div className={`md:block h-full ${activeTab === 'mockup' ? 'block' : 'hidden'}`}>
@@ -495,6 +532,19 @@ const App: React.FC = () => {
                         onAddToQueue={handleAddToQueue}
                         jobQueue={jobQueue}
                         onOpenQueueManager={() => setIsQueueManagerOpen(true)}
+                        onSelectForEtsy={setSelectedMockupForEtsy}
+                        selectedForEtsyId={selectedMockupForEtsy?.id}
+                    />
+                </div>
+                 <div className={`md:block h-full ${activeTab === 'etsy' ? 'block' : 'hidden'}`}>
+                    <EtsyColumn 
+                        selectedMockup={selectedMockupForEtsy}
+                        user={auth.user}
+                        showStatus={showStatus}
+                        onGenerate={handleGenerateEtsyContent}
+                        generatedTitle={generatedTitle}
+                        generatedTags={generatedTags}
+                        isLoading={isEtsyLoading}
                     />
                 </div>
             </main>

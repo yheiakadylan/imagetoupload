@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Part, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, Modality, Part, GenerateContentResponse, Type } from "@google/genai";
 import { EXPAND_PROMPT_DEFAULT } from "../constants";
 
 const MODEL_ID = 'gemini-2.5-flash-image';
@@ -85,10 +85,6 @@ export const generateArtwork = async (
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE],
-                // @ts-ignore
-                imageConfig: {
-                    aspectRatio
-                }
             },
         });
 
@@ -128,12 +124,57 @@ export const generateMockup = async (
         contents: { parts },
         config: {
             responseModalities: [Modality.IMAGE],
-            // @ts-ignore
-            imageConfig: {
-                aspectRatio
-            }
         },
     });
 
     return extractBase64FromResponse(response);
+};
+
+/**
+ * Generates an Etsy title and tags based on a prompt and a mockup image.
+ */
+export const generateEtsyListing = async (
+    prompt: string,
+    imageUrl: string,
+    apiKey: string
+): Promise<{ title: string; tags: string[] }> => {
+    const ai = createAiClient(apiKey);
+    const imagePart = dataUrlToPart(imageUrl);
+    const textPart = { text: prompt };
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: { parts: [imagePart, textPart] },
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    title: {
+                        type: Type.STRING,
+                        description: "[Personalization/Material] [Main Item Noun]: [Key Feature/Use] [Top 2–3 Descriptors]; help me write a title in a way that follows Etsy’s updated title guidance (clear nouns, objective descriptors, no subjective/gifting words, no repeats)."
+                    },
+                    tags: {
+                        type: Type.ARRAY,
+                        description: "[Personalization/Material] [Main Item Noun]: [Key Feature/Use] [Top 2–3 Descriptors]; help me write 13 SEO tags (each under 20 characters, separated by commas).",
+                        items: {
+                            type: Type.STRING
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    try {
+        const jsonString = response.text;
+        const parsed = JSON.parse(jsonString);
+        if (!parsed.title || !Array.isArray(parsed.tags)) {
+             throw new Error("Invalid JSON structure in AI response.");
+        }
+        return parsed;
+    } catch (e) {
+        console.error("Failed to parse Etsy listing JSON:", response.text, e);
+        throw new Error("AI response was not valid JSON.");
+    }
 };
