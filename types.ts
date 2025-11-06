@@ -91,3 +91,26 @@ export interface AppSettings {
     announcementText: string;
     announcementEnabled: boolean;
 }
+export interface EtsyListingTemplate {
+  id: string;
+  createdAt: number;
+  name: string;
+  description: string;
+  taxonomyId: number;
+  shippingProfileId: number;
+  returnPolicyId: number;
+  inventory: string;
+  
+  // New fields for Etsy API requirements
+  who_made?: 'i_did' | 'someone_else' | 'collective';
+  when_made?: string;
+  readiness_state_id?: string; // User requested text input.
+}
+
+
+export interface EtsyDescriptionTemplate {
+  id: string;
+  createdAt: number;
+  name: string;
+  content: string;
+}

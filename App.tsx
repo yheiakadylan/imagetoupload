@@ -21,6 +21,7 @@ import ImageEditor from './components/ImageEditor';
 import TabBar from './components/TabBar';
 import QueueManagerModal from './components/QueueManagerModal';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import EtsyUploadModal from './components/EtsyUploadModal';
 
 
 const App: React.FC = () => {
@@ -53,6 +54,7 @@ const App: React.FC = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isImageLogOpen, setIsImageLogOpen] = useState(false);
     const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+    const [isEtsyUploadModalOpen, setIsEtsyUploadModalOpen] = useState(false);
     const [isUpscaled, setIsUpscaled] = useState(false);
     const [isJpegCompress, setIsJpegCompress] = useState(false);
     const [jpegQuality, setJpegQuality] = useState('85');
@@ -489,6 +491,16 @@ const App: React.FC = () => {
                 isJpegCompress={isJpegCompress}
                 jpegQuality={jpegQuality}
             />
+            <EtsyUploadModal
+                isOpen={isEtsyUploadModalOpen}
+                onClose={() => setIsEtsyUploadModalOpen(false)}
+                mockups={currentMockups}
+                onMockupsChange={setCurrentMockups}
+                generatedTitle={generatedTitle}
+                generatedTags={generatedTags}
+                user={auth.user}
+                showStatus={showStatus}
+            />
             
             <main className="flex-1 md:grid md:grid-cols-[1fr_1.2fr_1fr] md:grid-rows-1 gap-3 p-3 min-h-0 pb-16 md:pb-3">
                 <div className={`md:block h-full ${activeTab === 'art' ? 'block' : 'hidden'}`}>
@@ -545,6 +557,7 @@ const App: React.FC = () => {
                         generatedTitle={generatedTitle}
                         generatedTags={generatedTags}
                         isLoading={isEtsyLoading}
+                        onOpenUploadModal={() => setIsEtsyUploadModalOpen(true)}
                     />
                 </div>
             </main>

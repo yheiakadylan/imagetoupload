@@ -7,13 +7,14 @@ import ImageTemplatePanel from './settings/ImageTemplatePanel';
 import AnnouncementPanel from './settings/AnnouncementPanel';
 import { ArtRef, Sample, Template } from '../types';
 import { AuthContext } from '../contexts/AuthContext';
+import DescriptionTemplatePanel from './settings/DescriptionTemplatePanel';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-type Tab = 'api' | 'prompts' | 'samples' | 'refs' | 'users' | 'announcement';
+type Tab = 'api' | 'prompts' | 'samples' | 'refs' | 'users' | 'announcement' | 'etsyDesc';
 
 const ALL_TABS: { id: Tab, label: string, adminOnly: boolean, managerOrAdmin: boolean }[] = [
     { id: 'announcement', label: 'Announcement', adminOnly: true, managerOrAdmin: false },
@@ -22,6 +23,7 @@ const ALL_TABS: { id: Tab, label: string, adminOnly: boolean, managerOrAdmin: bo
     { id: 'prompts', label: 'Mockup Prompts', adminOnly: false, managerOrAdmin: true },
     { id: 'samples', label: 'Product Samples', adminOnly: false, managerOrAdmin: true },
     { id: 'refs', label: 'Art References', adminOnly: false, managerOrAdmin: true },
+    { id: 'etsyDesc', label: 'Etsy Descriptions', adminOnly: false, managerOrAdmin: true },
 ];
 
 const ChevronDownIcon = () => (
@@ -36,7 +38,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
     const availableTabs = useMemo(() => {
         if (auth.user?.role === 'admin') return ALL_TABS;
-        if (auth.user?.role === 'manager') return ALL_TABS.filter(t => t.managerOrAdmin);
+        if (auth.user?.role === 'manager') return ALL_TABS.filter(t => t.managerOrAdmin || !t.adminOnly);
         return [];
     }, [auth.user?.role]);
     
@@ -60,6 +62,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             case 'prompts': return <PromptTemplatePanel />;
             case 'samples': return <ImageTemplatePanel<Sample> storageKey="SAMPLE_TEMPLATES" title="Product Samples" />;
             case 'refs': return <ImageTemplatePanel<ArtRef> storageKey="ARTREF_TEMPLATES" title="Artwork References" />;
+            case 'etsyDesc': return <DescriptionTemplatePanel />;
             default: return null;
         }
     }
