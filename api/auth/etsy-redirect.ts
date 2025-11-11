@@ -5,12 +5,6 @@ import { serialize } from 'cookie';
 
 // IMPORTANT: These should be set in your Vercel Environment Variables
 const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING; 
-const VERCEL_URL = process.env.VERCEL_URL;
-
-// Construct the Redirect URI based on the environment
-const REDIRECT_URI = VERCEL_URL
-    ? `https://${VERCEL_URL}/api/auth/etsy-callback`
-    : 'http://localhost:3000/api/auth/etsy-callback';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { userId } = req.query;
@@ -21,6 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!userId) {
         return res.status(400).send("User ID is required to initiate authentication.");
     }
+    
+    // Dynamically construct the Redirect URI from request headers for robustness
+    const host = req.headers.host;
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    const REDIRECT_URI = `${protocol}://${host}/api/auth/etsy-callback`;
 
     // A random string for CSRF protection
     const randomState = Math.random().toString(36).substring(7);

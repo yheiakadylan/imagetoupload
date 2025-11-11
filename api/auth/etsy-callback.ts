@@ -7,14 +7,14 @@ import { serialize } from 'cookie';
 // IMPORTANT: These should be set in your Vercel Environment Variables
 const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING;
 const ETSY_CLIENT_SECRET = process.env.ETSY_SHARED_SECRET;
-const VERCEL_URL = process.env.VERCEL_URL;
-
-const REDIRECT_URI = VERCEL_URL
-    ? `https://${VERCEL_URL}/api/auth/etsy-callback`
-    : 'http://localhost:3000/api/auth/etsy-callback';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { code, state } = req.query;
+
+    // Dynamically construct the Redirect URI to match the initial request
+    const host = req.headers.host;
+    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    const REDIRECT_URI = `${protocol}://${host}/api/auth/etsy-callback`;
 
     if (!code) {
         return res.status(400).send("Error: No authorization code provided from Etsy.");
@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Step 3: Redirect the user back to the main application
-        const appUrl = VERCEL_URL ? `https://${req.headers.host}` : 'http://localhost:3000';
+        const appUrl = `${protocol}://${host}`;
         res.redirect(302, appUrl);
 
     } catch (error: any) {
