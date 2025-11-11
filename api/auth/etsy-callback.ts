@@ -5,15 +5,15 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { serialize } from 'cookie';
 
 // IMPORTANT: These should be set in your Vercel Environment Variables
-const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING;
-const ETSY_CLIENT_SECRET = process.env.ETSY_SHARED_SECRET;
+const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING || 'txon8yoksj6q8ug9iqe3ktnr'; 
+const ETSY_CLIENT_SECRET = process.env.ETSY_SHARED_SECRET || 'ouej4bmfla';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { code, state } = req.query;
 
-    // Dynamically construct the Redirect URI to match the initial request
-    const host = req.headers.host;
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    // Use Vercel's forwarded headers for the most reliable URL construction
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
     const REDIRECT_URI = `${protocol}://${host}/api/auth/etsy-callback`;
 
     if (!code) {
@@ -81,6 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         // Step 3: Redirect the user back to the main application
+        // We use the same dynamic host/protocol to build the final app URL
         const appUrl = `${protocol}://${host}`;
         res.redirect(302, appUrl);
 

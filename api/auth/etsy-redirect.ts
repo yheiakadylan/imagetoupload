@@ -4,7 +4,7 @@ import { randomBytes, createHash } from 'crypto';
 import { serialize } from 'cookie';
 
 // IMPORTANT: These should be set in your Vercel Environment Variables
-const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING; 
+const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING || 'txon8yoksj6q8ug9iqe3ktnr'; 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { userId } = req.query;
@@ -16,10 +16,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).send("User ID is required to initiate authentication.");
     }
     
-    // Dynamically construct the Redirect URI from request headers for robustness
-    const host = req.headers.host;
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+    // Use Vercel's forwarded headers for the most reliable URL construction
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
     const REDIRECT_URI = `${protocol}://${host}/api/auth/etsy-callback`;
+    
+    // --- DEBUG LOGGING ---
+    // This will help the user confirm the exact Redirect URI their app is using.
+    console.log('[ETSY REDIRECT DEBUG] =======================================');
+    console.log(`Generated REDIRECT_URI: ${REDIRECT_URI}`);
+    console.log(`Using ETSY_CLIENT_ID ending with: ...${ETSY_CLIENT_ID?.slice(-4)}`);
+    console.log('Please ensure the "Generated REDIRECT_URI" value above EXACTLY matches the one in your Etsy App settings.');
+    console.log('===========================================================');
+    // --- END DEBUG LOGGING ---
+
 
     // A random string for CSRF protection
     const randomState = Math.random().toString(36).substring(7);
