@@ -2,6 +2,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../../services/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { serialize } from 'cookie';
 
 // IMPORTANT: These should be set in your Vercel Environment Variables
 const ETSY_CLIENT_ID = process.env.ETSY_KEYSTRING;
@@ -28,8 +29,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
          return res.status(400).send("Error: User ID could not be parsed from the state parameter.");
     }
 
-    // NOTE: For production, retrieve the `code_verifier` stored in the etsy-redirect step.
-    const pkce_verifier = "Y_pkce_verifier_needs_to_be_retrieved_from_cookie"; // This is a placeholder.
+    // Retrieve the code verifier from the cookie
+    const pkce_verifier = req.cookies.etsy_pkce_verifier;
+
+    if (!pkce_verifier) {
+        return res.status(400).send("Error: Missing PKCE verifier. Your session may have expired or cookies are blocked.");
+    }
+
+    // Clear the one-time use verifier cookie immediately
+    const clearCookie = serialize('etsy_pkce_verifier', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'development',
+        expires: new Date(0), // Set expiration to the past
+        path: '/api/auth',
+        sameSite: 'lax',
+    });
+    res.setHeader('Set-Cookie', clearCookie);
 
     try {
         // Step 1: Exchange the authorization code for an access token
@@ -51,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const tokenData = await tokenResponse.json();
         if (!tokenResponse.ok) {
             console.error("Etsy token error response:", tokenData);
-            throw new Error(tokenData.error_description || tokenData.error || 'Failed to fetch access token from Etsy');
+            throw new Error(tokenData.error_description || tokenData.error || 'Failed to fetch access token from Etsy. The code may have been used already, or the verifier was incorrect.');
         }
 
         const { access_token, refresh_token, expires_in } = tokenData;
