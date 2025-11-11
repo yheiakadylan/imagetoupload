@@ -26,6 +26,8 @@ const EtsyColumn: React.FC<EtsyColumnProps> = ({
     onOpenUploadModal
 }) => {
     const [localMockupUrl, setLocalMockupUrl] = useState<string | null>(null);
+    const [isManualMode, setIsManualMode] = useState(false);
+
 
     // When a mockup is selected from the other column, it should clear the local one.
     useEffect(() => {
@@ -34,6 +36,7 @@ const EtsyColumn: React.FC<EtsyColumnProps> = ({
 
     const activeImageUrl = localMockupUrl || selectedMockup?.dataUrl;
     const isEtsyConnected = !!user?.etsy_access_token;
+    const showGeneratorUI = isEtsyConnected || isManualMode;
 
     const handleConnectToEtsy = () => {
         if (user) {
@@ -100,24 +103,46 @@ const EtsyColumn: React.FC<EtsyColumnProps> = ({
                         Etsy Connected
                     </div>
                  )}
+                 {isManualMode && !isEtsyConnected && (
+                    <div className="flex items-center gap-2 text-xs font-bold bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full">
+                        Manual Mode
+                    </div>
+                 )}
             </div>
 
-
-            {!isEtsyConnected ? (
+            {!showGeneratorUI ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center bg-black/20 rounded-lg p-4">
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                     </svg>
                     <h3 className="text-lg font-bold text-white mb-1">Connect to Etsy</h3>
                     <p className="text-sm text-gray-400 mb-4 max-w-xs">
-                        To upload listings and fetch templates, you need to connect your Etsy account.
+                        Connect your account to upload listings and fetch templates.
                     </p>
-                    <Button variant="primary" onClick={handleConnectToEtsy}>
-                        Connect to Etsy
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button variant="primary" onClick={handleConnectToEtsy}>
+                            Connect to Etsy
+                        </Button>
+                        <Button variant="ghost" onClick={() => setIsManualMode(true)}>
+                            Generate Manually
+                        </Button>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-400 max-w-xs">
+                        <p className="font-bold mb-1">Having trouble connecting?</p>
+                        <p>
+                            If your app on Etsy is stuck in a "pending" state, you may not be able to change settings.
+                            Please contact <a href="https://www.etsy.com/developers/support" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Etsy Developer Support</a> to resolve this issue.
+                        </p>
+                    </div>
                 </div>
             ) : (
                 <div className="space-y-3">
+                    {isManualMode && !isEtsyConnected && (
+                        <div className="bg-yellow-500/10 text-yellow-300 text-sm p-2 rounded-lg text-center">
+                            <strong>Manual Mode:</strong> Generate content now. 
+                             <button onClick={() => setIsManualMode(false)} className="font-bold underline ml-2 hover:text-yellow-200">Connect to Etsy</button> to upload.
+                        </div>
+                    )}
                     {/* --- PREVIEWS --- */}
                     <div className="h-40 bg-black/20 rounded-lg p-2 flex items-center justify-center text-center group relative">
                         {activeImageUrl ? (
@@ -174,15 +199,17 @@ const EtsyColumn: React.FC<EtsyColumnProps> = ({
                         </div>
                     )}
                      {/* --- UPLOAD --- */}
-                     <div className="pt-3 border-t border-white/10">
-                         <Button 
-                            variant="primary" 
-                            onClick={onOpenUploadModal} 
-                            className="w-full py-2.5"
-                        >
-                            Upload to Etsy
-                        </Button>
-                     </div>
+                     {isEtsyConnected && (
+                         <div className="pt-3 border-t border-white/10">
+                             <Button 
+                                variant="primary" 
+                                onClick={onOpenUploadModal} 
+                                className="w-full py-2.5"
+                            >
+                                Upload to Etsy
+                            </Button>
+                         </div>
+                     )}
                 </div>
             )}
         </div>
