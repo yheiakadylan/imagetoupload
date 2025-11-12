@@ -24,6 +24,10 @@ import AnnouncementBanner from './components/AnnouncementBanner';
 import EtsyUploadModal from './components/EtsyUploadModal';
 
 const getErrorMessage = (error: any): string => {
+    // Puter.js specific "insufficient_funds" error
+    if (error && error.error && error.error.code === 'insufficient_funds') {
+        return 'Puter AI Error: Insufficient funds. Please add credits to your Puter account to continue.';
+    }
     // Standard Error object
     if (error instanceof Error) {
         return error.message;
@@ -154,7 +158,7 @@ const App: React.FC = () => {
             if (errorMessage.includes("cancelled by user")) {
                 showStatus('Artwork generation cancelled', 'warn');
             } else {
-                showStatus(errorMessage, 'err');
+                showStatus(errorMessage, 'err', 5000);
             }
         } finally {
             setIsLoading(false);
@@ -271,7 +275,7 @@ const App: React.FC = () => {
                 showStatus('Mockup generation cancelled', 'warn');
             } else {
                 console.error('Mockup generation failed:', error);
-                showStatus(errorMessage, 'err');
+                showStatus(errorMessage, 'err', 5000);
             }
         } finally {
             setIsLoading(false);
