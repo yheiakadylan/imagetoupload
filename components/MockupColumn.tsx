@@ -14,7 +14,7 @@ interface MockupColumnProps {
     isLoading: boolean;
     progress: { done: number; total: number; label: string };
     results: LogEntry[];
-    onGenerate: (prompts: MockupPrompt[], count: number, aspectRatio: string) => void;
+    onGenerate: (prompts: MockupPrompt[], count: number, aspectRatio: string, model: 'gemini' | 'puter') => void;
     onCancel: () => void;
     onViewImage: (result: LogEntry, sourceEl: HTMLElement) => void;
     isUpscaled: boolean;
@@ -27,7 +27,7 @@ interface MockupColumnProps {
     user: User | null;
     isBatchMode: boolean;
     onBatchModeChange: (enabled: boolean) => void;
-    onAddToQueue: (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string) => void;
+    onAddToQueue: (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string, model: 'gemini' | 'puter') => void;
     jobQueue: Job[];
     onOpenQueueManager: () => void;
     onSelectForEtsy: (result: LogEntry) => void;
@@ -44,6 +44,7 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
     const [prompts, setPrompts] = useState('');
     const [count, setCount] = useState(1);
     const [aspectRatio, setAspectRatio] = useState('1:1');
+    const [model, setModel] = useState<'gemini' | 'puter'>('gemini');
     const [sku, setSku] = useState('');
     const { templates: mockupTemplates } = useTemplates<Template>('TEMPLATES');
     
@@ -53,7 +54,7 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
 
     const handleGenerateClick = () => {
         if (parsedPrompts.length > 0) {
-            onGenerate(parsedPrompts, count, aspectRatio);
+            onGenerate(parsedPrompts, count, aspectRatio, model);
         } else {
             alert('Please enter at least one mockup prompt.');
         }
@@ -61,7 +62,7 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
 
     const handleAddToQueueClick = () => {
         if (parsedPrompts.length > 0) {
-            onAddToQueue(parsedPrompts, count, aspectRatio, sku);
+            onAddToQueue(parsedPrompts, count, aspectRatio, sku, model);
         } else {
             alert('Please enter at least one mockup prompt.');
         }
@@ -131,8 +132,8 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
         <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col min-h-0 backdrop-blur-lg h-full">
             <div className="flex-shrink-0">
                 <h2 className="text-lg font-bold mb-2">Generate Mockups</h2>
-                <div className="grid grid-cols-3 gap-4 mb-2">
-                    <Select onChange={(e) => setPrompts(e.target.value)}>
+                <div className="grid grid-cols-[1fr_120px_80px] gap-4 mb-2">
+                     <Select onChange={(e) => setPrompts(e.target.value)}>
                         <option value="">— Use Template —</option>
                         {mockupTemplates.map(t => <option key={t.id} value={t.prompt}>{t.name}</option>)}
                     </Select>
@@ -144,10 +145,17 @@ const MockupColumn: React.FC<MockupColumnProps> = ({
                     </Select>
                 </div>
                 <TextArea placeholder="Describe background/placement... (1 line = 1 prompt)" value={prompts} onChange={e => setPrompts(e.target.value)} />
-                <div className="mt-2 grid grid-cols-2 gap-4 items-end">
+                <div className="mt-2 grid grid-cols-[1fr_140px_auto] gap-4 items-end">
                     <div>
                         <label className="text-sm text-gray-400 mb-1 block">SKU (Optional)</label>
                         <input type="text" value={sku} onChange={e => setSku(e.target.value)} placeholder="ABC-001" className="w-full p-2.5 rounded-lg border border-white/20 bg-black/20 text-gray-200 outline-none"/>
+                    </div>
+                     <div>
+                        <label className="text-sm text-gray-400 mb-1 block">Model</label>
+                         <Select value={model} onChange={e => setModel(e.target.value as 'gemini' | 'puter')} className="h-[46px]">
+                            <option value="gemini">Google AI</option>
+                            <option value="puter">Puter AI</option>
+                        </Select>
                     </div>
                     <div className="flex items-center justify-end h-[46px]">
                         <ToggleSwitch enabled={isBatchMode} onChange={onBatchModeChange} label="Batch Mode"/>

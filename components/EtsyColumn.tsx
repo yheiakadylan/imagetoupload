@@ -128,11 +128,8 @@ const EtsyColumn: React.FC<EtsyColumnProps> = ({
                         </Button>
                     </div>
                     <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-400 max-w-xs">
-                        <p className="font-bold mb-1">Having trouble connecting?</p>
-                        <p>
-                            If your app on Etsy is stuck in a "pending" state, you may not be able to change settings.
-                            Please contact <a href="https://www.etsy.com/developers/support" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Etsy Developer Support</a> to resolve this issue.
-                        </p>
+                        <p className="font-bold mb-1">Connect to Etsy (Coming soon)</p>
+
                     </div>
                 </div>
             ) : (

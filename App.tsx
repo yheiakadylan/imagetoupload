@@ -92,15 +92,15 @@ const App: React.FC = () => {
         showStatus('Generation cancelled', 'warn');
     };
 
-    const handleGenerateArt = async (prompt: string, count: number, aspectRatio: string) => {
-        if (!userApiKey) {
-            showStatus('Your account does not have an API key assigned.', 'err');
+    const handleGenerateArt = async (prompt: string, count: number, aspectRatio: string, model: 'gemini' | 'puter', puterModel: string, puterQuality: string) => {
+        if (model === 'gemini' && !userApiKey) {
+            showStatus('Your account does not have an API key assigned for Gemini.', 'err');
             return;
         }
         setIsLoading(true);
         setPreviews([]);
         setCurrentIndex(0);
-        showStatus(`Generating ${count} artwork(s)...`, 'info');
+        showStatus(`Generating ${count} artwork(s) with ${model === 'gemini' ? 'Gemini AI' : 'Puter AI'}...`, 'info');
         
         abortControllerRef.current = new AbortController();
         const { signal } = abortControllerRef.current;
@@ -108,7 +108,7 @@ const App: React.FC = () => {
         try {
             const refUrls = await Promise.all(artRefs.map(r => downscaleDataUrl(r.dataUrl)));
             
-            const generatedImages = await geminiService.generateArtwork(prompt, aspectRatio, refUrls, count, userApiKey);
+            const generatedImages = await geminiService.generateArtwork(prompt, aspectRatio, refUrls, count, userApiKey || '', undefined, model, puterModel, puterQuality);
     
             if (signal.aborted) {
                 throw new Error("Operation cancelled by user.");
@@ -178,12 +178,12 @@ const App: React.FC = () => {
         }
     };
 
-    const handleGenerateMockups = async (prompts: MockupPrompt[], count: number, aspectRatio: string) => {
+    const handleGenerateMockups = async (prompts: MockupPrompt[], count: number, aspectRatio: string, model: 'gemini' | 'puter') => {
         if (!artwork) {
             showStatus('Please apply an artwork first.', 'err');
             return;
         }
-        if (!userApiKey) {
+        if (model === 'gemini' && !userApiKey) {
             showStatus('Your account does not have an API key assigned.', 'err');
             return;
         }
@@ -214,7 +214,7 @@ const App: React.FC = () => {
                     const resultId = `${prompt.id}-${i}-${Date.now()}`;
                     
                     try {
-                        const resultUrl = await geminiService.generateMockup(prompt.prompt, aspectRatio, downscaledSamples, downscaledArtwork, userApiKey);
+                        const resultUrl = await geminiService.generateMockup(prompt.prompt, aspectRatio, downscaledSamples, downscaledArtwork, userApiKey || '', model);
                         if (signal.aborted) throw new Error("Operation cancelled by user.");
                         const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: resultUrl, createdAt: Date.now() };
                         await addResultToLog(newEntry);
@@ -256,7 +256,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleAddToQueue = (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string) => {
+    const handleAddToQueue = (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string, model: 'gemini' | 'puter') => {
         if (!artwork) {
             showStatus('Please apply an artwork first.', 'err');
             return;
@@ -269,6 +269,7 @@ const App: React.FC = () => {
             prompts,
             count,
             aspectRatio,
+            model,
             status: 'queued',
             progress: { done: 0, total: prompts.length * count },
             results: [],
@@ -307,7 +308,7 @@ const App: React.FC = () => {
                             const resultId = `${prompt.id}-${i}-${Date.now()}`;
                             
                             try {
-                                const resultUrl = await geminiService.generateMockup(prompt.prompt, nextJob.aspectRatio, downscaledSamples, downscaledArtwork, userApiKey!);
+                                const resultUrl = await geminiService.generateMockup(prompt.prompt, nextJob.aspectRatio, downscaledSamples, downscaledArtwork, userApiKey || '', nextJob.model);
                                 if (signal.aborted) throw new Error("Operation cancelled by user.");
                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: resultUrl, createdAt: Date.now() };
                                 await addResultToLog(newEntry);

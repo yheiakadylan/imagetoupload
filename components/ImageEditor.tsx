@@ -280,13 +280,13 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ isOpen, onClose, showStatus, 
 
                 const maskDataUrl = maskCanvas.toDataURL('image/png');
 
-                const [resultUrl] = await geminiService.generateArtwork(prompt, aspectRatio, [sourceImage], 1, userApiKey, maskDataUrl);
+                const [resultUrl] = await geminiService.generateArtwork(prompt, aspectRatio, [sourceImage], 1, userApiKey, maskDataUrl, 'gemini');
                 setOutputImage(resultUrl);
 
             } else {
                 // Whole image editing logic
                 const finalPrompt = `Dựa trên hình ảnh được cung cấp, hãy thực hiện chỉnh sửa sau: "${prompt}". Điều cực kỳ quan trọng là phải duy trì phong cách của hình ảnh gốc, bao gồm phông chữ, màu sắc, chất liệu, và bố cục tổng thể. Các thay đổi phải liền mạch và trông tự nhiên.`;
-                const [resultUrl] = await geminiService.generateArtwork(finalPrompt, aspectRatio, [sourceImage], 1, userApiKey);
+                const [resultUrl] = await geminiService.generateArtwork(finalPrompt, aspectRatio, [sourceImage], 1, userApiKey, undefined, 'gemini');
                 setOutputImage(resultUrl);
             }
             showStatus('Image edited successfully!', 'ok');
