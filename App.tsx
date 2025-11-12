@@ -23,6 +23,26 @@ import QueueManagerModal from './components/QueueManagerModal';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import EtsyUploadModal from './components/EtsyUploadModal';
 
+const getErrorMessage = (error: any): string => {
+    // Standard Error object
+    if (error instanceof Error) {
+        return error.message;
+    }
+    // Puter.js API error object: { success: false, error: { message: '...' } }
+    if (error && error.error && typeof error.error.message === 'string') {
+        return error.error.message;
+    }
+    // Simple string error
+    if (typeof error === 'string') {
+        return error;
+    }
+    // Other object shapes that might have a 'message' property
+    if (error && typeof error.message === 'string') {
+        return error.message;
+    }
+    return 'An unknown error occurred.';
+};
+
 
 const App: React.FC = () => {
     const [artwork, setArtwork] = useState<string | null>(null);
@@ -130,10 +150,11 @@ const App: React.FC = () => {
             showStatus(`Generated ${generatedImages.length} artwork(s)!`, 'ok');
         } catch (error: any) {
             console.error('Artwork generation failed:', error);
-            if (error.message.includes("cancelled by user")) {
+            const errorMessage = getErrorMessage(error);
+            if (errorMessage.includes("cancelled by user")) {
                 showStatus('Artwork generation cancelled', 'warn');
             } else {
-                showStatus(error.message || 'Artwork generation failed', 'err');
+                showStatus(errorMessage, 'err');
             }
         } finally {
             setIsLoading(false);
@@ -228,7 +249,8 @@ const App: React.FC = () => {
 
                     } catch (error: any) {
                         if (signal.aborted) throw new Error("Operation cancelled by user.");
-                        const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: error.message || 'Generation failed', createdAt: Date.now() };
+                        const errorMessage = getErrorMessage(error);
+                        const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: errorMessage, createdAt: Date.now() };
                         await addResultToLog(newEntry);
                         setCurrentMockups(prev => [newEntry, ...prev]);
                     } finally {
@@ -244,11 +266,12 @@ const App: React.FC = () => {
                 showStatus(`Finished generating ${totalJobs} mockups.`, 'ok');
             }
         } catch (error: any) {
-             if (error.message.includes("cancelled by user")) {
+            const errorMessage = getErrorMessage(error);
+             if (errorMessage.includes("cancelled by user")) {
                 showStatus('Mockup generation cancelled', 'warn');
             } else {
                 console.error('Mockup generation failed:', error);
-                showStatus(error.message || 'Mockup generation failed', 'err');
+                showStatus(errorMessage, 'err');
             }
         } finally {
             setIsLoading(false);
@@ -316,7 +339,8 @@ const App: React.FC = () => {
 
                             } catch (error: any) {
                                 if (signal.aborted) throw new Error("Operation cancelled by user.");
-                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: error.message || 'Generation failed', createdAt: Date.now() };
+                                const errorMessage = getErrorMessage(error);
+                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: errorMessage, createdAt: Date.now() };
                                  await addResultToLog(newEntry);
                                  setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, results: [...j.results, newEntry] } : j));
                             } finally {
@@ -344,10 +368,11 @@ const App: React.FC = () => {
                         setCurrentMockups(prev => [...finalResults, ...prev]);
                     }
                 } catch (error: any) {
-                     if (error.message.includes("cancelled by user")) {
+                     const errorMessage = getErrorMessage(error);
+                     if (errorMessage.includes("cancelled by user")) {
                         setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'cancelled' as const } : j));
                      } else {
-                        setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'error' as const, error: error.message } : j));
+                        setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'error' as const, error: errorMessage } : j));
                      }
                 } finally {
                     setIsLoading(false); // Release the lock to allow the next job to start
