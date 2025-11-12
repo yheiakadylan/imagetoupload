@@ -1,9 +1,6 @@
 import { GoogleGenAI, Modality, Part, GenerateContentResponse, Type } from "@google/genai";
 import { EXPAND_PROMPT_DEFAULT } from "../constants";
 
-// Declare the 'puter' global provided by the Puter.js script
-declare const puter: any;
-
 const MODEL_ID = 'gemini-2.5-flash-image';
 const VIETNAMESE_EXPAND_PROMPT = "Mở rộng khung hình ảnh ra ngoài, giữ nguyên phần nền hiện có. Việc mở rộng phải liền mạch, tiếp tục phong cách hình ảnh và nội dung của phần nền hiện tại để tạo thêm không gian xung quanh";
 const VIETNAMESE_INPAINT_PROMPT = `Sử dụng hình ảnh thứ hai làm mặt nạ (mask). Vùng trắng trên mặt nạ chỉ ra khu vực cần chỉnh sửa trên ảnh gốc (ảnh đầu tiên). Trong khu vực được chỉ định bởi mặt nạ, hãy vẽ: "{USER_PROMPT}". Giữ nguyên phần còn lại của hình ảnh gốc không thay đổi.`;
@@ -21,14 +18,6 @@ const dataUrlToPart = (dataUrl: string): Part => {
     const mimeType = header.match(/:(.*?);/)?.[1] || "image/png";
     return { inlineData: { mimeType, data } };
 };
-
-const dataUrlToPuterInput = (dataUrl: string): { input_image: string; input_image_mime_type: string } => {
-    const [header, data] = dataUrl.split(",");
-    if (!header || !data) throw new Error('Invalid dataURL format');
-    const mimeType = header.match(/:(.*?);/)?.[1] || "image/png";
-    return { input_image: data, input_image_mime_type: mimeType };
-};
-
 
 const extractBase64FromResponse = (resp: GenerateContentResponse): string => {
     // FIX: Use the `.text` property to extract the response, which is a base64 string for image generation.
@@ -59,88 +48,54 @@ export const generateArtwork = async (
     count: number,
     apiKey: string,
     maskUrl?: string,
-    model: 'gemini' | 'puter' = 'gemini',
-    puterModel?: string,
-    puterQuality?: string
 ): Promise<string[]> => {
+    const ai = createAiClient(apiKey);
     const results: string[] = [];
 
-    if (model === 'puter') {
-        // --- Puter.js AI Logic ---
-        if (typeof puter === 'undefined' || typeof puter.ai?.txt2img !== 'function') {
-            throw new Error("Puter.js AI library is not available.");
-        }
+    // The model does not support candidateCount for image generation, so we loop.
+    for (let i = 0; i < count; i++) {
+        const parts: Part[] = [];
 
-        const puterPrompt = `${prompt}. `;
-        const options: any = {};
-        if (puterModel) {
-            options.model = puterModel;
-        }
-        if (puterQuality) {
-            options.quality = puterQuality;
-        }
-        
-        if (puterModel === 'gemini-2.5-flash-image-preview' && refUrls.length > 0) {
-            const { input_image, input_image_mime_type } = dataUrlToPuterInput(refUrls[0]);
-            options.input_image = input_image;
-            options.input_image_mime_type = input_image_mime_type;
-        }
+        // Inpainting logic
+        if (maskUrl && refUrls.length > 0) {
+            const sourceImageUrl = refUrls[0];
+            parts.push(dataUrlToPart(sourceImageUrl));
+            parts.push(dataUrlToPart(maskUrl));
 
-        for (let i = 0; i < count; i++) {
-            const imageElement: HTMLImageElement = await puter.ai.txt2img(puterPrompt, options);
-            results.push(imageElement.src);
-        }
-
-    } else {
-        // --- Gemini AI Logic (Existing) ---
-        const ai = createAiClient(apiKey);
-
-        // The model does not support candidateCount for image generation, so we loop.
-        for (let i = 0; i < count; i++) {
-            const parts: Part[] = [];
-
-            // Inpainting logic
-            if (maskUrl && refUrls.length > 0) {
-                const sourceImageUrl = refUrls[0];
-                parts.push(dataUrlToPart(sourceImageUrl));
-                parts.push(dataUrlToPart(maskUrl));
-
-                // FIX: Add aspect ratio to the prompt for inpainting.
-                const inpaintPrompt = VIETNAMESE_INPAINT_PROMPT.replace('{USER_PROMPT}', `${prompt}. Aspect ratio: ${aspectRatio}.`);
-                parts.push({ text: inpaintPrompt });
-            } else { // Existing logic for generation/expansion/editing
-                if (refUrls.length > 0) {
-                    parts.push(...refUrls.map(dataUrlToPart));
-                }
-
-                let textPrompt = prompt;
-                // Use the specific Vietnamese prompt for expansion requests
-                if (prompt === EXPAND_PROMPT_DEFAULT) {
-                    textPrompt = VIETNAMESE_EXPAND_PROMPT;
-                }
-
-                const baseGuard = refUrls.length > 0
-                    ? "Use the provided image(s) as reference(s)."
-                    : "Generate a clean, high-resolution, print-ready artwork. No borders, no watermark, centered composition.";
-                
-                // FIX: Add aspect ratio to the prompt instead of using a separate config.
-                const fullPrompt = `${baseGuard} ${textPrompt}. Aspect ratio: ${aspectRatio}.`;
-                parts.push({ text: fullPrompt });
+            const inpaintPrompt = VIETNAMESE_INPAINT_PROMPT.replace('{USER_PROMPT}', prompt);
+            parts.push({ text: inpaintPrompt });
+        } else { // Existing logic for generation/expansion/editing
+            if (refUrls.length > 0) {
+                parts.push(...refUrls.map(dataUrlToPart));
             }
 
-            const response = await ai.models.generateContent({
-                model: MODEL_ID,
-                contents: { parts },
-                config: {
-                    // FIX: Removed unsupported `imageConfig` which caused requests to hang.
-                    responseModalities: [Modality.IMAGE],
-                },
-            });
+            let textPrompt = prompt;
+            // Use the specific Vietnamese prompt for expansion requests
+            if (prompt === EXPAND_PROMPT_DEFAULT) {
+                textPrompt = VIETNAMESE_EXPAND_PROMPT;
+            }
 
-            results.push(extractBase64FromResponse(response));
+            const baseGuard = refUrls.length > 0
+                ? "Use the provided image(s) as reference(s)."
+                : "Generate a clean, high-resolution, print-ready artwork. No borders, no watermark, centered composition.";
+
+            parts.push({ text: `${baseGuard} ${textPrompt}` });
         }
-    }
 
+        const response = await ai.models.generateContent({
+            model: MODEL_ID,
+            contents: { parts },
+            config: {
+                responseModalities: [Modality.IMAGE],
+                // @ts-ignore
+                imageConfig: {
+                    aspectRatio
+                }
+            },
+        });
+
+        results.push(extractBase64FromResponse(response));
+    }
     return results;
 };
 
@@ -154,32 +109,7 @@ export const generateMockup = async (
     sampleUrls: string[] = [],
     artworkUrl: string,
     apiKey: string,
-    model: 'gemini' | 'puter' = 'gemini'
 ): Promise<string> => {
-    
-    if (model === 'puter') {
-        if (typeof puter === 'undefined' || typeof puter.ai?.txt2img !== 'function') {
-            throw new Error("Puter.js AI library is not available.");
-        }
-        const { input_image, input_image_mime_type } = dataUrlToPuterInput(artworkUrl);
-
-        const guard = sampleUrls.length
-            ? "Use the provided image as artwork to apply onto a product reference. Keep the product's shape; do not repaint/reshape. Apply realistically with natural lighting/shadows/reflections."
-            : "The provided image is artwork. Generate a product mockup as described and apply this artwork realistically with natural lighting/shadows/reflections.";
-
-        const fullPrompt = `${guard} ${prompt}.`;
-
-        const options = {
-            model: "gemini-2.5-flash-image-preview",
-            input_image,
-            input_image_mime_type
-        };
-
-        const imageElement: HTMLImageElement = await puter.ai.txt2img(fullPrompt, options);
-        return imageElement.src;
-    }
-
-    // --- Gemini Logic ---
     const ai = createAiClient(apiKey);
     const parts: Part[] = [];
 
@@ -192,16 +122,18 @@ export const generateMockup = async (
         ? "Use the earlier image(s) as product references. The LAST image is the artwork to apply onto the product. Keep the product's shape; do not repaint/reshape. Apply realistically with natural lighting/shadows/reflections."
         : "The provided image is artwork. Generate a product mockup as described and apply this artwork realistically with natural lighting/shadows/reflections.";
 
-    // FIX: Add aspect ratio to the prompt instead of using a separate config.
-    const fullPrompt = `${guard} ${prompt}. Aspect ratio: ${aspectRatio}.`;
+    const fullPrompt = `${guard} ${prompt}`;
     parts.push({ text: fullPrompt });
 
     const response = await ai.models.generateContent({
         model: MODEL_ID,
         contents: { parts },
         config: {
-            // FIX: Removed unsupported `imageConfig` which caused requests to hang.
             responseModalities: [Modality.IMAGE],
+            // @ts-ignore
+            imageConfig: {
+                aspectRatio
+            }
         },
     });
 

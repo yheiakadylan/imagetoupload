@@ -77,7 +77,6 @@ export interface Job {
   prompts: MockupPrompt[];
   count: number;
   aspectRatio: string;
-  model: 'gemini' | 'puter';
   status: 'queued' | 'running' | 'completed' | 'cancelled' | 'error';
   progress: { done: number; total: number };
   results: LogEntry[];

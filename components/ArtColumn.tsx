@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ArtRef, Sample, User } from '../types';
 import Button from './common/Button';
 import Select from './common/Select';
@@ -22,7 +22,7 @@ interface ArtColumnProps {
     samples: Sample[];
     onSamplesChange: React.Dispatch<React.SetStateAction<Sample[]>>;
     isLoading: boolean;
-    onGenerate: (prompt: string, count: number, aspectRatio: string, model: 'gemini' | 'puter', puterModel: string, puterQuality: string) => void;
+    onGenerate: (prompt: string, count: number, aspectRatio: string) => void;
     onCancel: () => void;
     user: User | null;
     onViewImage: (url: string, sourceId: string, el: HTMLElement) => void;
@@ -46,36 +46,14 @@ const ArtColumn: React.FC<ArtColumnProps> = ({
     const [prompt, setPrompt] = useState('');
     const [count, setCount] = useState(1);
     const [aspectRatio, setAspectRatio] = useState('1:1');
-    const [model, setModel] = useState<'gemini' | 'puter'>('gemini');
-    const [puterModel, setPuterModel] = useState('gemini-2.5-flash-image-preview');
-    const [puterQuality, setPuterQuality] = useState('');
     const [isDraggingArtwork, setIsDraggingArtwork] = useState(false);
     const [isDraggingArt, setIsDraggingArt] = useState(false);
     const [isDraggingSample, setIsDraggingSample] = useState(false);
     const [openSections, setOpenSections] = useState<Set<string>>(new Set(['generate']));
 
+
     const { templates: artRefTemplates } = useTemplates<ArtRef>('ARTREF_TEMPLATES');
     const { templates: sampleTemplates } = useTemplates<Sample>('SAMPLE_TEMPLATES');
-
-    const PUTER_MODELS = [
-        { id: 'gpt-image-1', name: 'Puter (GPT Image 1)' },
-        { id: 'gemini-2.5-flash-image-preview', name: 'Puter (Gemini Flash Image)' },
-        { id: 'dall-e-3', name: 'Puter (DALL-E 3)' }
-    ];
-    
-    const QUALITY_OPTIONS: Record<string, string[]> = {
-        'gpt-image-1': ['high', 'medium', 'low'],
-        'dall-e-3': ['hd', 'standard'],
-    };
-
-    useEffect(() => {
-        const qualities = QUALITY_OPTIONS[puterModel];
-        if (qualities) {
-            setPuterQuality(qualities[0]);
-        } else {
-            setPuterQuality('');
-        }
-    }, [puterModel]);
 
     const toggleSection = (section: string) => {
         setOpenSections(prev => {
@@ -274,14 +252,7 @@ const ArtColumn: React.FC<ArtColumnProps> = ({
                     <div className={`grid transition-all duration-300 ease-in-out md:grid-rows-[1fr] md:opacity-100 ${openSections.has('generate') ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden">
                             <div className="pb-2">
-                                <div className="grid grid-cols-3 gap-4 mb-2">
-                                    <div>
-                                        <label className="text-sm text-gray-400 mb-1 block">Provider</label>
-                                        <Select value={model} onChange={e => setModel(e.target.value as 'gemini' | 'puter')}>
-                                            <option value="gemini">Gemini AI</option>
-                                            <option value="puter">Puter AI</option>
-                                        </Select>
-                                    </div>
+                                <div className="grid grid-cols-2 gap-4 mb-2">
                                     <div>
                                         <label className="text-sm text-gray-400 mb-1 block">Ratio</label>
                                         <Select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)}>
@@ -295,29 +266,9 @@ const ArtColumn: React.FC<ArtColumnProps> = ({
                                         </Select>
                                     </div>
                                 </div>
-                                {model === 'puter' && (
-                                    <div className="grid grid-cols-2 gap-4 mb-2">
-                                        <div>
-                                            <label className="text-sm text-gray-400 mb-1 block">Puter Model</label>
-                                            <Select value={puterModel} onChange={e => setPuterModel(e.target.value)}>
-                                                {PUTER_MODELS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                                            </Select>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm text-gray-400 mb-1 block">Quality</label>
-                                            <Select value={puterQuality} onChange={e => setPuterQuality(e.target.value)} disabled={!QUALITY_OPTIONS[puterModel]}>
-                                                {QUALITY_OPTIONS[puterModel] ? (
-                                                    QUALITY_OPTIONS[puterModel].map(q => <option key={q} value={q}>{q}</option>)
-                                                ) : (
-                                                    <option>N/A</option>
-                                                )}
-                                            </Select>
-                                        </div>
-                                    </div>
-                                )}
                                 <TextArea placeholder="Describe the artwork..." value={prompt} onChange={e => setPrompt(e.target.value)} className="h-24" />
                                 <div className="flex items-center gap-2 mt-2">
-                                    <Button variant="ghost" onClick={() => onGenerate(prompt, count, aspectRatio, model, puterModel, puterQuality)} disabled={isLoading || !prompt}>
+                                    <Button variant="ghost" onClick={() => onGenerate(prompt, count, aspectRatio)} disabled={isLoading || !prompt}>
                                         {isLoading ? <><Spinner className="mr-2"/> Generating...</> : 'Generate'}
                                     </Button>
                                     <Button variant="primary" onClick={() => onArtworkApply(previews[currentIndex])} disabled={previews.length === 0}>Apply</Button>

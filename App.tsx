@@ -23,30 +23,6 @@ import QueueManagerModal from './components/QueueManagerModal';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import EtsyUploadModal from './components/EtsyUploadModal';
 
-const getErrorMessage = (error: any): string => {
-    // Puter.js specific "insufficient_funds" error
-    if (error && error.error && error.error.code === 'insufficient_funds') {
-        return 'Puter AI Error: Insufficient funds. Please add credits to your Puter account to continue.';
-    }
-    // Standard Error object
-    if (error instanceof Error) {
-        return error.message;
-    }
-    // Puter.js API error object: { success: false, error: { message: '...' } }
-    if (error && error.error && typeof error.error.message === 'string') {
-        return error.error.message;
-    }
-    // Simple string error
-    if (typeof error === 'string') {
-        return error;
-    }
-    // Other object shapes that might have a 'message' property
-    if (error && typeof error.message === 'string') {
-        return error.message;
-    }
-    return 'An unknown error occurred.';
-};
-
 
 const App: React.FC = () => {
     const [artwork, setArtwork] = useState<string | null>(null);
@@ -116,15 +92,15 @@ const App: React.FC = () => {
         showStatus('Generation cancelled', 'warn');
     };
 
-    const handleGenerateArt = async (prompt: string, count: number, aspectRatio: string, model: 'gemini' | 'puter', puterModel: string, puterQuality: string) => {
-        if (model === 'gemini' && !userApiKey) {
-            showStatus('Your account does not have an API key assigned for Gemini.', 'err');
+    const handleGenerateArt = async (prompt: string, count: number, aspectRatio: string) => {
+        if (!userApiKey) {
+            showStatus('Your account does not have an API key assigned.', 'err');
             return;
         }
         setIsLoading(true);
         setPreviews([]);
         setCurrentIndex(0);
-        showStatus(`Generating ${count} artwork(s) with ${model === 'gemini' ? 'Gemini AI' : 'Puter AI'}...`, 'info');
+        showStatus(`Generating ${count} artwork(s)...`, 'info');
         
         abortControllerRef.current = new AbortController();
         const { signal } = abortControllerRef.current;
@@ -132,7 +108,7 @@ const App: React.FC = () => {
         try {
             const refUrls = await Promise.all(artRefs.map(r => downscaleDataUrl(r.dataUrl)));
             
-            const generatedImages = await geminiService.generateArtwork(prompt, aspectRatio, refUrls, count, userApiKey || '', undefined, model, puterModel, puterQuality);
+            const generatedImages = await geminiService.generateArtwork(prompt, aspectRatio, refUrls, count, userApiKey);
     
             if (signal.aborted) {
                 throw new Error("Operation cancelled by user.");
@@ -154,11 +130,10 @@ const App: React.FC = () => {
             showStatus(`Generated ${generatedImages.length} artwork(s)!`, 'ok');
         } catch (error: any) {
             console.error('Artwork generation failed:', error);
-            const errorMessage = getErrorMessage(error);
-            if (errorMessage.includes("cancelled by user")) {
+            if (error.message.includes("cancelled by user")) {
                 showStatus('Artwork generation cancelled', 'warn');
             } else {
-                showStatus(errorMessage, 'err', 5000);
+                showStatus(error.message || 'Artwork generation failed', 'err');
             }
         } finally {
             setIsLoading(false);
@@ -203,12 +178,12 @@ const App: React.FC = () => {
         }
     };
 
-    const handleGenerateMockups = async (prompts: MockupPrompt[], count: number, aspectRatio: string, model: 'gemini' | 'puter') => {
+    const handleGenerateMockups = async (prompts: MockupPrompt[], count: number, aspectRatio: string) => {
         if (!artwork) {
             showStatus('Please apply an artwork first.', 'err');
             return;
         }
-        if (model === 'gemini' && !userApiKey) {
+        if (!userApiKey) {
             showStatus('Your account does not have an API key assigned.', 'err');
             return;
         }
@@ -239,7 +214,7 @@ const App: React.FC = () => {
                     const resultId = `${prompt.id}-${i}-${Date.now()}`;
                     
                     try {
-                        const resultUrl = await geminiService.generateMockup(prompt.prompt, aspectRatio, downscaledSamples, downscaledArtwork, userApiKey || '', model);
+                        const resultUrl = await geminiService.generateMockup(prompt.prompt, aspectRatio, downscaledSamples, downscaledArtwork, userApiKey);
                         if (signal.aborted) throw new Error("Operation cancelled by user.");
                         const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: resultUrl, createdAt: Date.now() };
                         await addResultToLog(newEntry);
@@ -253,8 +228,7 @@ const App: React.FC = () => {
 
                     } catch (error: any) {
                         if (signal.aborted) throw new Error("Operation cancelled by user.");
-                        const errorMessage = getErrorMessage(error);
-                        const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: errorMessage, createdAt: Date.now() };
+                        const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: error.message || 'Generation failed', createdAt: Date.now() };
                         await addResultToLog(newEntry);
                         setCurrentMockups(prev => [newEntry, ...prev]);
                     } finally {
@@ -270,12 +244,11 @@ const App: React.FC = () => {
                 showStatus(`Finished generating ${totalJobs} mockups.`, 'ok');
             }
         } catch (error: any) {
-            const errorMessage = getErrorMessage(error);
-             if (errorMessage.includes("cancelled by user")) {
+             if (error.message.includes("cancelled by user")) {
                 showStatus('Mockup generation cancelled', 'warn');
             } else {
                 console.error('Mockup generation failed:', error);
-                showStatus(errorMessage, 'err', 5000);
+                showStatus(error.message || 'Mockup generation failed', 'err');
             }
         } finally {
             setIsLoading(false);
@@ -283,7 +256,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleAddToQueue = (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string, model: 'gemini' | 'puter') => {
+    const handleAddToQueue = (prompts: MockupPrompt[], count: number, aspectRatio: string, sku: string) => {
         if (!artwork) {
             showStatus('Please apply an artwork first.', 'err');
             return;
@@ -296,7 +269,6 @@ const App: React.FC = () => {
             prompts,
             count,
             aspectRatio,
-            model,
             status: 'queued',
             progress: { done: 0, total: prompts.length * count },
             results: [],
@@ -335,7 +307,7 @@ const App: React.FC = () => {
                             const resultId = `${prompt.id}-${i}-${Date.now()}`;
                             
                             try {
-                                const resultUrl = await geminiService.generateMockup(prompt.prompt, nextJob.aspectRatio, downscaledSamples, downscaledArtwork, userApiKey || '', nextJob.model);
+                                const resultUrl = await geminiService.generateMockup(prompt.prompt, nextJob.aspectRatio, downscaledSamples, downscaledArtwork, userApiKey!);
                                 if (signal.aborted) throw new Error("Operation cancelled by user.");
                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: resultUrl, createdAt: Date.now() };
                                 await addResultToLog(newEntry);
@@ -343,8 +315,7 @@ const App: React.FC = () => {
 
                             } catch (error: any) {
                                 if (signal.aborted) throw new Error("Operation cancelled by user.");
-                                const errorMessage = getErrorMessage(error);
-                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: errorMessage, createdAt: Date.now() };
+                                 const newEntry: LogEntry = { id: resultId, type: 'mockup', prompt: prompt.prompt, dataUrl: '', error: error.message || 'Generation failed', createdAt: Date.now() };
                                  await addResultToLog(newEntry);
                                  setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, results: [...j.results, newEntry] } : j));
                             } finally {
@@ -372,11 +343,10 @@ const App: React.FC = () => {
                         setCurrentMockups(prev => [...finalResults, ...prev]);
                     }
                 } catch (error: any) {
-                     const errorMessage = getErrorMessage(error);
-                     if (errorMessage.includes("cancelled by user")) {
+                     if (error.message.includes("cancelled by user")) {
                         setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'cancelled' as const } : j));
                      } else {
-                        setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'error' as const, error: errorMessage } : j));
+                        setJobQueue(prev => prev.map(j => j.id === nextJob.id ? { ...j, status: 'error' as const, error: error.message } : j));
                      }
                 } finally {
                     setIsLoading(false); // Release the lock to allow the next job to start
