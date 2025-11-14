@@ -15,7 +15,8 @@
     "firebase": "^12.3.0",
     "@vercel/node": "^5.5.4",
     "crypto": "^1.0.1",
-    "cookie": "^1.0.2"
+    "cookie": "^1.0.2",
+    "firebase-admin": "^13.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
