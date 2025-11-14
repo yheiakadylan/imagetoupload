@@ -1,11 +1,21 @@
-
 // api/extension-login.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { firebaseConfig } from '../../services/firebase'; // Import config from the root services
+// FIX: Xóa dòng import và dán trực tiếp config vào đây
+// Vercel build lỗi khi cố gắng import từ bên ngoài thư mục /api
+export const firebaseConfig = {
+  apiKey: "AIzaSyBcSyIap5cJ8U3AGyHXksUfvr5Cm0h2W8k",
+  authDomain: "musicapp265204.firebaseapp.com",
+  projectId: "musicapp265204",
+  storageBucket: "musicapp265204.firebasestorage.app",
+  messagingSenderId: "654255707414",
+  appId: "1:654255707414:web:70f9a517aabecf06622c37",
+  measurementId: "G-6TPD10VYRP"
+};
 
 // Initialize Firebase CLIENT app (only for this login function)
+// NOTE: Vercel có thể cache các instance, nên dùng getApps() là an toàn
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
@@ -35,6 +45,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
     } catch (error: any) {
+        console.error("Login API error:", error);
         res.status(401).json({ error: 'Invalid credentials' });
     }
 }
+
+
