@@ -22,21 +22,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // 1. Get the token from the header
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ error: 'Unauthorized: No token provided.' });
         }
         const idToken = authHeader.split('Bearer ')[1];
-
-        // 2. Verify the token
         const decodedToken = await adminAuth.verifyIdToken(idToken);
         const uid = decodedToken.uid;
 
-        // 3. Query Firestore
+        // --- THAY ĐỔI LỚN ---
+        // Xóa bộ lọc .where('status', '==', 'pending')
+        // Chúng ta sẽ lấy tất cả listing của user và sắp xếp
         const snapshot = await adminDb.collection('prepared_listings')
             .where('ownerUid', '==', uid)
-            .where('status', '==', 'pending')
+            // .where('status', '==', 'pending') // <-- XÓA DÒNG NÀY
             .orderBy('createdAt', 'desc')
             .get();
 
@@ -44,16 +43,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json([]);
         }
 
-        // 4. Return the list (only title and ID)
-        const listings = snapshot.docs.map(doc => ({
-            id: doc.id,
-            title: doc.data().title || 'Untitled Listing'
-        }));
+        // Thêm trường 'status' vào data trả về
+        const listings = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                title: data.title || 'Untitled Listing',
+                status: data.status || 'pending' // <-- THÊM DÒNG NÀY
+            };
+        });
 
         res.status(200).json(listings);
 
     } catch (error: any) {
         console.error(error);
-        res.status(401).json({ error: 'Unauthorized: Invalid token.' });
+        // Lỗi này có thể xảy ra nếu bạn chưa tạo Index
+        if (error.code === 9) {
+             res.status(500).json({ error: 'Lỗi FAILED_PRECONDITION: Query yêu cầu một index. Vui lòng kiểm tra log của Vercel để tạo index.' });
+        } else {
+            res.status(401).json({ error: 'Unauthorized: Invalid token.' });
+        }
     }
 }
