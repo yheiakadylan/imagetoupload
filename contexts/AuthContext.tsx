@@ -12,7 +12,6 @@ export interface User {
     role: 'admin' | 'user' | 'manager';
     apiKeyId?: string;
     password?: string; // Only used for creation/validation, not stored in active session
-    etsy_access_token?: string;
 }
 
 interface AuthContextType {
@@ -72,7 +71,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         username: userData?.username,
                         role: userData?.role,
                         apiKeyId: userData?.apiKeyId,
-                        etsy_access_token: userData?.etsy_access_token,
                     });
                 } else {
                     await signOut(auth);

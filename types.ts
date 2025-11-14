@@ -86,7 +86,6 @@ export interface Job {
 
 
 export interface User extends AuthUser {
-    etsy_access_token?: string;
 }
 
 export interface AppSettings {
