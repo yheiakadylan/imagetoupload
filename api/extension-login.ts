@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { firebaseConfig } from '../services/firebase'; // Import config from the root services
+import { firebaseConfig } from 'services/firebase'; // Import config from the root services
 
 // Initialize Firebase CLIENT app (only for this login function)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
