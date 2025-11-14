@@ -1,8 +1,21 @@
 
 // api/get-listings.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { adminAuth, adminDb } from './_lib/firebaseAdmin';
-
+import admin from 'firebase-admin';
+let app: admin.app.App;
+if (!process.env.FIREBASE_ADMIN_SDK_JSON) {
+    throw new Error("FIREBASE_ADMIN_SDK_JSON environment variable is not set.");
+}
+if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK_JSON);
+    app = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+} else {
+    app = admin.app();
+}
+export const adminAuth = app.auth();
+export const adminDb = app.firestore();
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET') {
         return res.status(405).send('Method Not Allowed');

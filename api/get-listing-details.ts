@@ -2,10 +2,23 @@
 
 // api/get-listing-details.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { adminAuth, adminDb } from './_lib/firebaseAdmin';
+import admin from 'firebase-admin';
 // FIX: Import Buffer to resolve 'Cannot find name' error in Node.js environment.
 import { Buffer } from 'buffer';
-
+let app: admin.app.App;
+if (!process.env.FIREBASE_ADMIN_SDK_JSON) {
+    throw new Error("FIREBASE_ADMIN_SDK_JSON environment variable is not set.");
+}
+if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK_JSON);
+    app = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+    });
+} else {
+    app = admin.app();
+}
+export const adminAuth = app.auth();
+export const adminDb = app.firestore();
 // Helper function to fetch an image from a URL and convert it to base64
 async function fetchImageAsBase64(url: string) {
     try {
