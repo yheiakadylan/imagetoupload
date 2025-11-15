@@ -3,14 +3,13 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-export const firebaseConfig = {
-  apiKey: "AIzaSyBcSyIap5cJ8U3AGyHXksUfvr5Cm0h2W8k",
-  authDomain: "musicapp265204.firebaseapp.com",
-  projectId: "musicapp265204",
-  storageBucket: "musicapp265204.firebasestorage.app",
-  messagingSenderId: "654255707414",
-  appId: "1:654255707414:web:70f9a517aabecf06622c37",
-  measurementId: "G-6TPD10VYRP"
+const firebaseConfig = {
+  apiKey: "AIzaSyCx9vtXMdCButQVMEg1g_RJ_dSxcW6UqUg",
+  authDomain: "ai-genart.firebaseapp.com",
+  projectId: "ai-genart",
+  storageBucket: "ai-genart.firebasestorage.app",
+  messagingSenderId: "133544409645",
+  appId: "1:133544409645:web:6955ac0d4aeb6864ec16a4"
 };
 
 // Initialize Firebase
